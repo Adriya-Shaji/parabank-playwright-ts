@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 const TEST_PASSWORD = 'TestUser@1234';
 
 export interface Address {
@@ -18,7 +20,7 @@ export interface Customer {
 }
 
 export function createUniqueCustomer(): Customer {
-    const timestamp = Date.now();
+    const uniqueId = randomUUID().replace(/-/g, '').slice(0, 12);
 
     return {
         firstName: 'Test',
@@ -29,7 +31,7 @@ export function createUniqueCustomer(): Customer {
             state: 'Test State',
             zipCode: '1002',
         },
-        username: `customer_${timestamp}`,
+        username: `cust_${uniqueId}`,
         phoneNumber: '5551234567',
         ssn: '123456789',
         password: TEST_PASSWORD
