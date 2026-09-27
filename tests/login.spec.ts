@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.describe.configure({ mode: 'default' });
+
 function requireEnv(key: string): string {
     const value = process.env[key];
 
@@ -66,7 +68,7 @@ test('rejects invalid credentials with controlled error', async ({ page }) => {
                 { exact: true }
             )
         ).toBeVisible();
-        
+
         await expect(
             page.getByRole(
                 'heading', { name: 'Accounts Overview' })
