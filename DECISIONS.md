@@ -63,3 +63,16 @@ Use randomUUID() instead of Date.now() for generated customer usernames.
 
 **Why not `serial`:**
 The tests are independent. `serial` can skip later tests after one fails and retry the group together. `mode: 'default'` prevents parallel execution in the spec while keeping each test independent.
+
+
+### Technical decision: No `BasePage` introduced during POM formalisation.
+
+
+**Why I made it:** 
+The current page objects do not yet share enough meaningful behaviour to justify inheritance. They all use Playwright's `Page` object, and containers such as `#rightPanel` appear on multiple pages, but that does not make them useful shared abstractions. `#rightPanel` contains different content and behaviour depending on the page, such as login errors, registration results, or account balances, so there is no common method or assertion to extract. A shared selector alone is not enough reason to introduce a base class or component.
+
+**Risk it reduces:** 
+It reduces the risk of creating a premature inheritance hierarchy or a growing `BasePage` that becomes a dumping ground for unrelated helpers, locators, and feature-specific behaviour.
+
+**Trade-off:** 
+Some small pieces of setup, such as storing the Playwright `Page` reference, remain duplicated across page objects for now. I am accepting that minor duplication until genuine cross-page behaviour emerges that can be extracted with a clear responsibility.
