@@ -2,21 +2,23 @@ import type { Locator, Page } from "@playwright/test";
 import type { Customer } from "../utils/customerFactory.js";
 
 export class RegisterPage {
-    readonly page: Page;
+    private readonly page: Page;
     
-    readonly firstNameInput: Locator;
-    readonly lastNameInput: Locator;
-    readonly streetInput: Locator;
-    readonly cityInput: Locator;
-    readonly stateInput: Locator;
-    readonly zipCodeInput: Locator;
-    readonly phoneNumberInput: Locator;
-    readonly ssnInput: Locator;
-    readonly usernameInput: Locator;
-    readonly passwordInput: Locator;
-    readonly confirmPasswordInput: Locator;
+    private readonly firstNameInput: Locator;
+    private readonly lastNameInput: Locator;
+    private readonly streetInput: Locator;
+    private readonly cityInput: Locator;
+    private readonly stateInput: Locator;
+    private readonly zipCodeInput: Locator;
+    private readonly phoneNumberInput: Locator;
+    private readonly ssnInput: Locator;
+    private readonly usernameInput: Locator;
+    private readonly passwordInput: Locator;
+    private readonly confirmPasswordInput: Locator;
 
-    readonly registerButton: Locator;
+    private readonly registerButton: Locator;
+
+    public readonly usernameError: Locator;
 
     constructor(page: Page){
         this.page = page;
@@ -34,6 +36,14 @@ export class RegisterPage {
         this.confirmPasswordInput = page.locator('input[name="repeatedPassword"]');
 
         this.registerButton = page.getByRole('button', { name: 'Register' });
+
+        this.usernameError = page.locator(
+            '[id="customer.username.errors"]'
+        );
+    }
+
+    async goto(): Promise<void> {
+        await this.page.goto('register.htm');
     }
 
     async registerCustomer(customer: Customer): Promise<void> {
