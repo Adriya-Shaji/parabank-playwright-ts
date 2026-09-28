@@ -5,16 +5,17 @@ import { LoginPage } from '../pages/LoginPage.js';
 
 test.describe.configure({ mode: 'default' });
 
+let registerPage: RegisterPage;
 
 test.beforeEach(async ({ page }) => {
-    await page.goto('register.htm');
+    registerPage = new RegisterPage(page);
+
+    await registerPage.goto();
 });
 
 
 test('new customer can register and is logged in', async ({ page }) => {
-
     const customer = createUniqueCustomer();
-    const registerPage = new RegisterPage(page);
 
     await registerPage.registerCustomer(customer);
 
@@ -22,8 +23,7 @@ test('new customer can register and is logged in', async ({ page }) => {
     const leftPanel = page.locator('#leftPanel');
 
     await expect(
-        rightPanel.getByRole(
-            'heading', {
+        rightPanel.getByRole('heading', {
             name: `Welcome ${customer.username}`,
             exact: true
         })
@@ -37,15 +37,12 @@ test('new customer can register and is logged in', async ({ page }) => {
     ).toBeVisible();
 
     await expect(
-        leftPanel.getByRole(
-            'link', { name: 'Log Out' }
-        )
+        leftPanel.getByRole('link', { name: 'Log Out' })
     ).toBeVisible();
 });
 
 test('registered customer persists and can log in again', async ({ page }) => {
     const customer = createUniqueCustomer();
-    const registerPage = new RegisterPage(page);
     const loginPage = new LoginPage(page);
 
     // 1. Register a new customer
@@ -80,12 +77,10 @@ test('registered customer persists and can log in again', async ({ page }) => {
             `Welcome ${customer.firstName} ${customer.lastName}`
         )
     ).toBeVisible();
-
 });
 
 test('rejects registration with duplicate username', async ({ page }) => {
     const customer = createUniqueCustomer();
-    const registerPage = new RegisterPage(page);
 
     // Create the customer first
     await registerPage.registerCustomer(customer);
@@ -101,16 +96,15 @@ test('rejects registration with duplicate username', async ({ page }) => {
         )
     ).toBeVisible();
 
-    await leftPanel.getByRole(
-        'link', { name: 'Log Out' }
-    ).click();
+    await leftPanel
+        .getByRole('link', { name: 'Log Out' })
+        .click();
 
-    await page.goto('register.htm');
+    await registerPage.goto();
 
     // Try to register the same customer again.
     await registerPage.registerCustomer(customer);
 
-    await expect(
-        page.locator('[id="customer.username.errors"]')
-    ).toHaveText('This username already exists.');
+    await expect(registerPage.usernameError)
+        .toHaveText('This username already exists.');
 });
