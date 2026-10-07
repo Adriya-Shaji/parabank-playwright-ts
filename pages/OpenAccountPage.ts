@@ -23,7 +23,7 @@ export class OpenAccountPage {
     }
 
     async openAccount(
-        accountType: "SAVINGS" | "CHECKING", sourceAccountNumber: string
+        accountType: 'SAVINGS' | 'CHECKING', sourceAccountNumber: string
     ): Promise<void> {
         await this.accountTypeDropdown
             .selectOption({ label: accountType });
