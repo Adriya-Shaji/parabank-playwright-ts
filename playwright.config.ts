@@ -19,8 +19,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  ...(process.env.CI ? {workers: 1} : {} ),
+
+  /* Parallel registration has failed with "username already exists".
+   * The cause is not established; serial runs have passed every time.
+   */
+  workers: 1,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
@@ -39,7 +42,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     }
 
-   
     /* Test against mobile viewports. */
     // {
     //   name: 'Mobile Chrome',
