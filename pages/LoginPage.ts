@@ -6,6 +6,7 @@ export class LoginPage {
     private readonly usernameInput: Locator;
     private readonly passwordInput: Locator;
     private readonly loginButton: Locator;
+    private readonly logoutLink: Locator;
 
     public readonly errorMessage: Locator;
 
@@ -15,6 +16,7 @@ export class LoginPage {
         this.usernameInput = page.locator('input[name="username"]');
         this.passwordInput = page.locator('input[name="password"]');
         this.loginButton = page.getByRole('button', { name: 'Log In' });
+        this.logoutLink = page.getByRole('link', { name: 'Log Out' });
 
         this.errorMessage = page.locator('#rightPanel p.error');
     }
@@ -27,5 +29,9 @@ export class LoginPage {
         await this.usernameInput.fill(username);
         await this.passwordInput.fill(password);
         await this.loginButton.click();
+    }
+
+    async logout(): Promise<void> {
+        await this.logoutLink.click();
     }
 }
