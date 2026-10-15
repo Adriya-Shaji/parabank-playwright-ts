@@ -172,3 +172,29 @@ Keeps interaction locators private so specs cannot bypass the page object by rea
 **Trade-off:**
 
 A locator method creates a new locator each time it is called, while a field is created once. For these small locators the cost is expected to be negligible, but it has not been measured.
+
+### Follow ParaBank redirects in the CI readiness check
+
+**Technical decision:**
+
+The `Wait for ParaBank` step requests the home page and follows redirects. It retries up to 30 times, 5 seconds apart, with a 10-second limit on each request:
+
+```bash
+curl -sfL -m 10 http://localhost:8080/parabank/index.htm
+```
+
+**Why I made it:**
+
+The original check used `curl -sf` against `/parabank/`. That URL returns a 302 to `index.htm`, which then redirects to `initializeDB.htm`. The old check treated the first 302 as success and stopped.
+
+In failed CI run #2, the ParaBank server log showed `user lacks privilege or object not found: SEQUENCE`, followed by `Database not yet initialized. Initializing...`. That is consistent with the tests starting before the database was set up.
+
+**Risk it reduces:**
+
+It reduces the risk of CI declaring ParaBank ready too early and starting the tests before the application is ready for registration. In the first CI run, the old check passed on attempt 1 in about 1 second, but 7 of 8 tests then failed when registration returned HTTP 500.
+
+**Trade-off:**
+
+The check only proves that the home-page redirect path completes. It could still pass while registration or another backend function is failing, so it does not prove that every ParaBank feature is ready.
+
+I also do not fully understand why one fresh local run passed without opening the home page first, so the exact trigger is still not completely understood.
