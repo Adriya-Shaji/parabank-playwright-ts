@@ -116,7 +116,7 @@ The CI job:
 6. Waits for ParaBank to be ready
 7. Runs the Playwright test suite
 8. Uploads the Playwright HTML report
-9. Prints the ParaBank container logs if the job fails. This diagnostic step is in place but has not yet been triggered by a failure
+9. Prints the ParaBank container logs if the job fails. In failed run #2, the logs showed a database `object not found` error.
 
 The readiness check follows the ParaBank home-page redirects:
 
