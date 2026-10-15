@@ -1,39 +1,47 @@
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage.js';
+import { RegisterPage } from '../pages/RegisterPage.js';
+import { createUniqueCustomer } from '../utils/customerFactory.js';
+import type { Customer } from '../utils/customerFactory.js';
 
 test.describe.configure({ mode: 'default' });
 
-function requireEnv(key: string): string {
-    const value = process.env[key];
-
-    if (!value) {
-        throw new Error(`Missing required env var: ${key}`);
-    }
-
-    return value;
-}
-
 let loginPage: LoginPage;
+let customer: Customer;
 
 test.beforeEach(async ({ page }) => {
+    const registerPage = new RegisterPage(page);
+
     loginPage = new LoginPage(page);
+    customer = createUniqueCustomer();
 
-    await loginPage.goto();
+    // 1. Register a new customer
+    await registerPage.goto();
+    await registerPage.registerCustomer(customer);
 
+    const rightPanel = page.locator('#rightPanel');
+
+    await expect(
+        rightPanel.getByText(
+            'Your account was created successfully. You are now logged in.',
+            { exact: true }
+        )
+    ).toBeVisible();
+
+    // 2. End the session created by registration
+    await loginPage.logout();
+
+    // 3. Confirm user is returned to the login page
     await expect(
         page.getByRole('heading', { name: 'Customer Login' })
     ).toBeVisible();
+
 });
 
 
-test('existing customer can log in and see their account overview', async ({ page }) => {
-    const username = requireEnv('TEST_USERNAME');
-    const password = requireEnv('TEST_PASSWORD');
-    const firstName = requireEnv('TEST_FIRSTNAME');
-    const lastName = requireEnv('TEST_LASTNAME');
-
-    await test.step('Log in as existing customer', async () => {
-        await loginPage.login(username, password);
+test('registered customer can log in and see their account overview', async ({ page }) => {
+    await test.step('Log in as registered customer', async () => {
+        await loginPage.login(customer.username, customer.password);
 
         await expect(
             page.getByRole(
@@ -42,18 +50,15 @@ test('existing customer can log in and see their account overview', async ({ pag
 
         await expect(
             page.getByText(
-                `Welcome ${firstName} ${lastName}`
+                `Welcome ${customer.firstName} ${customer.lastName}`
             )
         ).toBeVisible();
     });
 });
 
-test('rejects invalid credentials with controlled error', async ({ page }) => {
-    const username = requireEnv('TEST_USERNAME');
-    const password = requireEnv('TEST_PASSWORD');
-
+test('rejects incorrect password for registered customer', async ({ page }) => {
     await test.step('Submit invalid credentials and verify the error message', async () => {
-        await loginPage.login(username, `invalid_${password}`);
+        await loginPage.login(customer.username, `invalid_${customer.password}`);
 
         await expect(loginPage.errorMessage).toBeVisible();
 
