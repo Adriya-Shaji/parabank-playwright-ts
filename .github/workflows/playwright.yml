@@ -38,7 +38,7 @@ jobs:
             fi
             sleep 5
           done
-          echo "Parabank is not ready after 150 seconds"
+          echo "ParaBank did not become ready after 30 attempts"
           exit 1
 
       - name: Run ParaBank tests
