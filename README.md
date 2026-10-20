@@ -12,7 +12,7 @@ I chose ParaBank because it is a banking demo application, so its customer, acco
 
 I run ParaBank locally in Docker instead of relying on the public hosted environment because the public environment is shared and can reset.
 
-A fresh container can require application/database initialisation through the ParaBank home page. I found this behaviour while debugging the GitHub Actions pipeline.
+A fresh container can accept web requests before its database is ready for the test suite. I found this behaviour while debugging the GitHub Actions pipeline, where registration could fail with database errors such as `object not found: SEQUENCE`.
 
 ## Running it locally
 
@@ -29,17 +29,15 @@ docker compose up -d
 
 This reads `docker-compose.yml` and starts ParaBank in the background.
 
-### 2. Initialise ParaBank
+### 2. Initialise and verify ParaBank readiness
 
-Open this page once in your browser:
-
-```text
-http://localhost:8080/parabank/index.htm
+```bash
+./scripts/wait-for-parabank.sh
 ```
 
-During manual testing with a fresh container, registering before opening the home page returned a 500 error, while following the home-page redirects first allowed registration to succeed.
+The readiness script calls ParaBank's `initializeDB` endpoint until it receives HTTP `204`, then verifies that the seeded `john/demo` customer can be read through the REST login endpoint with HTTP `200`.
 
-A separate fresh local run of the Playwright suite also passed once without this manual step, so the exact trigger is not fully understood. Opening the home page first is currently the safer local setup.
+Run this after `docker compose up -d` and before starting the Playwright tests.
 
 ### 3. Install dependencies
 
@@ -158,15 +156,15 @@ The suite currently runs with:
 workers: 1
 ```
 
-A parallel run previously failed once with:
+Overlapping customer registrations failed intermittently with `This username already exists`, even with unique UUID-based usernames. I reproduced the failure with a registration-only test using two workers.
 
-```text
-This username already exists.
-```
-
-Serial runs passed. The exact cause of the parallel failure has not been established.
+Serial runs passed. The failure rate was not measured, and the backend mechanism was not established.
 
 `workers: 1` is therefore a current stability measure, not a proven root-cause fix.
+
+### Readiness probe scope
+
+The readiness script verifies that database initialisation completes and that seeded customer data can be read through the REST layer. It does not directly verify that customer registration works.
 
 ### Demo and portfolio scope
 
