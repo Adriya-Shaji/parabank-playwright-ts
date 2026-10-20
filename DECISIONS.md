@@ -184,7 +184,11 @@ Keeps interaction locators private so specs cannot bypass the page object by rea
 
 A locator method creates a new locator each time it is called, while a field is created once. For these small locators the cost is expected to be negligible, but it has not been measured.
 
-### Follow ParaBank redirects in the CI readiness check
+### Follow ParaBank redirects in the CI readiness check (superseded)
+
+**Superseded**
+
+This approach was replaced by the entry below.
 
 **Technical decision:**
 
@@ -208,4 +212,34 @@ It reduces the risk of CI declaring ParaBank ready too early and starting the te
 
 The check only proves that the home-page redirect path completes. It could still pass while registration or another backend function is failing, so it does not prove that every ParaBank feature is ready.
 
-I also do not fully understand why one fresh local run passed without opening the home page first, so the exact trigger is still not completely understood.
+Why one fresh local run passed without opening the home page first was not established.
+
+### Initialise ParaBank database and verify seeded data before starting tests
+
+**Technical decision:**
+
+CI runs `scripts/wait-for-parabank.sh` before Playwright. The script calls ParaBank's `initializeDB` endpoint until it receives HTTP `204`, then calls the seeded `john/demo` login endpoint until it receives HTTP `200`.
+
+**Why I made it:**
+
+The earlier readiness check followed the `index.htm` redirect path, but that proved only that the home-page redirect path completed. Earlier CI evidence showed registration could still fail with database errors such as `object not found: SEQUENCE`.
+
+The new probe checks two stronger conditions: the database-initialisation operation completed successfully, and seeded customer data can be read through the REST layer.
+
+The probe passed 3 of 3 fresh-container local validation runs, with all 8 Playwright tests passing immediately afterward. It also passed in two GitHub Actions runs, where `initializeDB` returned `204` on attempt 1, the seeded login returned `200` on attempt 1, and all 8 Playwright tests passed.
+
+The retry path was observed locally but was not exercised in CI.
+
+**Risk it reduces:**
+
+Reduces the risk of starting the Playwright suite when the ParaBank web server is reachable but the database is not yet usable for reads.
+
+**Trade-off:**
+
+The probe depends on ParaBank's `initializeDB` admin endpoint, the seeded `john/demo` account, and their current HTTP response behaviour. A future ParaBank image could change these and cause CI to fail until the probe is updated.
+
+The script deliberately treats only HTTP `204` as successful initialisation, so an unexpected response fails loudly rather than being accepted silently.
+
+The seeded-login probe proves that database-backed customer data is readable through the REST layer. It does not directly prove that customer registration works.
+
+The local validation and two CI runs are a small sample; no failure rate was measured. The old readiness check was not rerun with `workers: 1`, so the successful runs do not establish that the new probe caused the improvement.
