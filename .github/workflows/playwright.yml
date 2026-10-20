@@ -29,17 +29,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
 
       - name: Wait for ParaBank
-        run: |
-          for i in $(seq 1 30); do
-            echo "Attempt $i: waiting for Parabank"
-            if curl -sfL -m 10 http://localhost:8080/parabank/index.htm > /dev/null; then
-              echo "ParaBank is ready"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "ParaBank did not become ready after 30 attempts"
-          exit 1
+        run: ./scripts/wait-for-parabank.sh
 
       - name: Run ParaBank tests
         run: npx playwright test
