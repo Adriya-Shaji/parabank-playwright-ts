@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, type Page } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage.js';
 import { RegisterPage } from '../pages/RegisterPage.js';
 import { createUniqueCustomer, type Customer } from '../utils/customerFactory.js';
@@ -8,6 +8,7 @@ type TestFixtures = {
     registerPage: RegisterPage;
     customer: Customer;
     registeredCustomer: Customer;
+    authenticatedPage: Page;
 };
 
 export const test = base.extend<TestFixtures>({
@@ -51,6 +52,19 @@ export const test = base.extend<TestFixtures>({
 
             // 4. Give the registered, logged-out customer to the test
             await use(customer);
+    },
+    authenticatedPage: async ({ page, loginPage, registeredCustomer },
+        use) => {
+        await loginPage.login(
+            registeredCustomer.username,
+            registeredCustomer.password
+        );
+
+        await expect(
+            page.getByRole('heading', { name: 'Accounts Overview' })
+        ).toBeVisible();
+
+        await use(page);
     }
 });
 
