@@ -243,3 +243,39 @@ The script deliberately treats only HTTP `204` as successful initialisation, so 
 The seeded-login probe proves that database-backed customer data is readable through the REST layer. It does not directly prove that customer registration works.
 
 The local validation and two CI runs are a small sample; no failure rate was measured. The old readiness check was not rerun with `workers: 1`, so the successful runs do not establish that the new probe caused the improvement.
+
+### Use test-scoped fixtures instead of shared `beforeEach` setup
+
+**Technical decision:**
+
+Use custom Playwright fixtures for reusable test setup and state, including page objects, unique customer data, registered customers, and authenticated browser state.
+
+Keep state-changing fixtures test-scoped.
+
+**Why I made it:**
+
+The previous login setup used `beforeEach` to register and log out a customer before every login test. This meant some tests received setup they did not need. For example, the empty-credentials test registered a customer even though it only needed the login page.
+
+The registration setup was also duplicated between `login.spec.ts` and `accounts.spec.ts`.
+
+Fixtures let each test request only the state it needs, make dependencies visible in the test signature, and allow larger setup such as `authenticatedPage` to build on smaller fixtures such as `registeredCustomer`.
+
+A worker-scoped fixture is shared by tests that run in the same worker process, so state-changing setup could leak between tests. The accounts test expects exactly one account, so reusing the same customer across tests could make the result depend on test order.
+
+Removing the shared `beforeEach` also exposed a hidden dependency: the empty-credentials test had relied on the hook leaving the browser on the login page. The test now navigates there explicitly.
+
+**Risk it reduces:**
+
+Reduces unnecessary setup and duplicated registration logic.
+
+Replaces module-level `let` variables with per-test fixture values, so tests do not depend on shared mutable state.
+
+Makes hidden setup dependencies easier to see from the test signature.
+
+**Trade-off:**
+
+The fixture dependency chain is more abstract than inline setup, so a reader has to understand where each test state comes from.
+
+`authenticatedPage` performs a real login for every test that requests it, which adds extra UI setup time.
+
+Because `authenticatedPage` depends on `registeredCustomer`, a failure in registration or login can make every test that uses `authenticatedPage` fail. The fixture boundary makes the failure location clearer, but the dependency still creates a wider blast radius.
