@@ -1,7 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/test-fixtures.js';
 import { AccountsOverviewPage } from '../pages/AccountsOverviewPage.js';
-import { RegisterPage } from '../pages/RegisterPage.js';
-import { createUniqueCustomer } from '../utils/customerFactory.js';
 import { OpenAccountPage } from '../pages/OpenAccountPage.js';
 
 test.describe.configure({ mode: 'default' });
@@ -43,24 +41,8 @@ function centsToBalanceText(cents: number): string {
     return `$${dollars}.${centsText}`;
 }
 
-test('opens a savings account and updates account balances', async ({ page }) => {
-    const registerPage = new RegisterPage(page);
-    const accountsOverviewPage = new AccountsOverviewPage(page);
-
-    await registerPage.goto();
-
-    const rightPanel = page.locator('#rightPanel');
-
-    const customer = createUniqueCustomer();
-    await registerPage.registerCustomer(customer);
-
-    // Minimal prerequisite check: registration actually succeeded
-    await expect(
-        rightPanel.getByText(
-            'Your account was created successfully. You are now logged in.',
-            { exact: true }
-        )
-    ).toBeVisible();
+test('opens a savings account and updates account balances', async ({ authenticatedPage }) => {
+    const accountsOverviewPage = new AccountsOverviewPage(authenticatedPage);
 
     await accountsOverviewPage.goto();
 
@@ -88,7 +70,7 @@ test('opens a savings account and updates account balances', async ({ page }) =>
             sourceBalanceCents - OPENING_DEPOSIT_CENTS
         );
 
-    const openAccountPage = new OpenAccountPage(page);
+    const openAccountPage = new OpenAccountPage(authenticatedPage);
 
     await openAccountPage.goto();
 
