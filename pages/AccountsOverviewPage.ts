@@ -39,4 +39,12 @@ export class AccountsOverviewPage {
             .getByRole('cell')
             .nth(1);
     }
+
+    async openAccountActivity(accountNumber: string): Promise<void> {
+        await this.getAccountRow(accountNumber)
+            .getByRole('link', {
+                name: accountNumber, exact: true
+            })
+            .click();
+    }
 }
