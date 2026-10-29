@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { AccountsOverviewPage } from "../pages/AccountsOverviewPage.js";
+import { OpenAccountPage } from "../pages/OpenAccountPage.js";
 
 test.describe.configure({ mode: 'default' });
 
@@ -31,8 +32,31 @@ test('customer completes end-to-end banking journey @e2e',
                 return await accountLinks.innerText();
             });
 
-        await test.step('Open savings account', async () => {
-        });
+        const destinationAccountNumber = await test.step(
+            'Open savings account', async () => {
+                const openAccountPage = new OpenAccountPage(page);
+
+                await openAccountPage.goto();
+                await openAccountPage.openAccount('SAVINGS', sourceAccountNumber);
+
+                await expect(
+                    page.locator('#rightPanel').getByText(
+                        'Congratulations, your account is now open.',
+                        { exact: true }
+                    )
+                ).toBeVisible();
+
+                await expect(
+                    openAccountPage.newAccountId).toHaveText(/^\d+$/
+                    );
+
+                const newAccountNumber =
+                    await openAccountPage.newAccountId.innerText();
+
+                expect(newAccountNumber).not.toBe(sourceAccountNumber);
+
+                return newAccountNumber;
+            });
 
         await test.step('Transfer funds', async () => {
         });
