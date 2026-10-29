@@ -2,8 +2,6 @@ import { test, expect } from "../fixtures/test-fixtures.js";
 import { AccountsOverviewPage } from "../pages/AccountsOverviewPage.js";
 import { OpenAccountPage } from "../pages/OpenAccountPage.js";
 
-test.describe.configure({ mode: 'default' });
-
 test('customer completes end-to-end banking journey @e2e',
     async ({ page, customer, registerPage }) => {
         const accountsOverviewPage = new AccountsOverviewPage(page);
