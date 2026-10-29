@@ -14,7 +14,8 @@ export class AccountActivityPage {
 
     transactionRow(
         description: string,
-        amount: string): Locator {
+        amount: string
+    ): Locator {
         return this.page
             .locator('#transactionTable tbody tr')
             .filter({ hasText: description })
