@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { AccountsOverviewPage } from "../pages/AccountsOverviewPage.js";
 import { OpenAccountPage } from "../pages/OpenAccountPage.js";
+import { TransferFundsPage } from "../pages/TransferFundsPage.js";
 
 test('customer completes end-to-end banking journey @e2e',
     async ({ page, customer, registerPage }) => {
@@ -57,6 +58,31 @@ test('customer completes end-to-end banking journey @e2e',
             });
 
         await test.step('Transfer funds', async () => {
+            const transferFundsPage = new TransferFundsPage(page);
+
+            await transferFundsPage.goto();
+            
+            await transferFundsPage.transferFunds(
+                '10', 
+                sourceAccountNumber, 
+                destinationAccountNumber
+            );
+
+            await expect(
+                transferFundsPage.transferCompleteHeading
+            ).toBeVisible();
+
+            await expect(
+                transferFundsPage.amountResult
+            ).toHaveText('$10.00');
+
+            await expect(
+                transferFundsPage.fromAccountResult
+            ).toHaveText(sourceAccountNumber);
+
+            await expect(
+                transferFundsPage.toAccountResult
+            ).toHaveText(destinationAccountNumber);
         });
 
         await test.step('Verify source account activity', async () => {
