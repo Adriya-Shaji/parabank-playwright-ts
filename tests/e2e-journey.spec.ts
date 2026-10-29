@@ -2,6 +2,11 @@ import { test, expect } from "../fixtures/test-fixtures.js";
 import { AccountsOverviewPage } from "../pages/AccountsOverviewPage.js";
 import { OpenAccountPage } from "../pages/OpenAccountPage.js";
 import { TransferFundsPage } from "../pages/TransferFundsPage.js";
+import { AccountActivityPage } from "../pages/AccountActivityPage.js";
+
+// Transaction table columns: Date, Transaction, Debit (-), Credit (+)
+const DEBIT_COLUMN = 2;
+const CREDIT_COLUMN = 3;
 
 test('customer completes end-to-end banking journey @e2e',
     async ({ page, customer, registerPage }) => {
@@ -61,10 +66,10 @@ test('customer completes end-to-end banking journey @e2e',
             const transferFundsPage = new TransferFundsPage(page);
 
             await transferFundsPage.goto();
-            
+
             await transferFundsPage.transferFunds(
-                '10', 
-                sourceAccountNumber, 
+                '10',
+                sourceAccountNumber,
                 destinationAccountNumber
             );
 
@@ -86,8 +91,42 @@ test('customer completes end-to-end banking journey @e2e',
         });
 
         await test.step('Verify source account activity', async () => {
+            const accountActivityPage = new AccountActivityPage(page);
+
+            await accountsOverviewPage.goto();
+            await accountsOverviewPage.openAccountActivity(sourceAccountNumber);
+
+            await expect(accountActivityPage.accountNumber)
+                .toHaveText(sourceAccountNumber);
+
+            const sourceTransferRow = accountActivityPage
+                .transactionRow('Funds Transfer Sent', '$10.00');
+
+            await expect(sourceTransferRow).toHaveCount(1);
+
+            await expect(
+                sourceTransferRow.getByRole('cell').nth(DEBIT_COLUMN)
+            ).toHaveText('$10.00');
         });
 
         await test.step('Verify destination account activity', async () => {
+            const accountActivityPage = new AccountActivityPage(page);
+
+            await accountsOverviewPage.goto();
+            await accountsOverviewPage.openAccountActivity(
+                destinationAccountNumber
+            );
+
+            await expect(accountActivityPage.accountNumber)
+                .toHaveText(destinationAccountNumber);
+
+            const destinationTransferRow = accountActivityPage
+                .transactionRow('Funds Transfer Received', '$10.00');
+
+            await expect(destinationTransferRow).toHaveCount(1);
+
+            await expect(
+                destinationTransferRow.getByRole('cell').nth(CREDIT_COLUMN)
+            ).toHaveText('$10.00');
         });
     });
