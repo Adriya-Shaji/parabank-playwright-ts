@@ -222,7 +222,7 @@ CI runs `scripts/wait-for-parabank.sh` before Playwright. The script calls ParaB
 
 **Why I made it:**
 
-The earlier readiness check followed the `index.htm` redirect path, but that proved only that the home-page redirect path completed. Earlier CI evidence showed registration could still fail with database errors such as `object not found: SEQUENCE`.
+The earlier readiness check followed the `index.htm` redirect path, but that proved only that the home-page redirect path completed, not that the database was usable. The `object not found: SEQUENCE` error came from Run #2, which used an earlier `/parabank/` check without redirect following. No CI run failed on the `index.htm` check, so this script is a stricter check rather than a fix for an observed failure of the previous one.
 
 The new probe checks two stronger conditions: the database-initialisation operation completed successfully, and seeded customer data can be read through the REST layer.
 
