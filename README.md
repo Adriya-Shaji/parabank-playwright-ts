@@ -2,23 +2,43 @@
 
 ## Overview
 
-This is a personal portfolio test automation framework built with Playwright and TypeScript. It tests selected banking flows against a local ParaBank application running in Docker.
+This is a personal SDET portfolio project built with Playwright and TypeScript to automate selected ParaBank UI tests in a local Docker environment.
 
-This is a personal project and is not based on client code.
+The repository includes page objects, reusable Playwright fixtures, a ParaBank readiness script and GitHub Actions CI. It is a personal project and is not based on client code.
 
 ## Why ParaBank, and why local Docker
 
 I chose ParaBank because it is a banking demo application, so its customer, account and transaction flows are relevant to my previous banking testing experience.
 
-I run ParaBank locally in Docker instead of relying on the public hosted environment because the public environment is shared and can reset.
+I run ParaBank locally in Docker instead of relying on the public hosted environment because the public environment is shared and can reset. Running it locally also gives me a more controlled and repeatable test environment for both local execution and CI.
 
-A fresh container can accept web requests before its database is ready for the test suite. I found this behaviour while debugging the GitHub Actions pipeline, where registration could fail with database errors such as `object not found: SEQUENCE`.
+## Stack
+
+- Playwright
+- TypeScript
+- Docker and Docker Compose
+- GitHub Actions
+- Node.js 20 in CI
+- Developed locally on Node.js 22
+
+## Project structure
+
+| Path | Purpose |
+| --- | --- |
+| `pages/` | Page objects that contain reusable locators and UI interaction methods. |
+| `tests/` | Playwright spec files covering smoke, registration, login, account, transfer and end-to-end scenarios. |
+| `fixtures/` | Reusable Playwright fixtures for page objects, unique customer data, registered customers and a logged-in page. |
+| `utils/` | Shared test utilities, including runtime customer-data generation. |
+| `scripts/` | Supporting automation scripts that initialise ParaBank and check that it is ready before the Playwright suite starts. |
+| `.github/workflows/` | GitHub Actions workflow used to run the Playwright suite in CI. |
+| `docker-compose.yml` | Defines the local ParaBank Docker service using the `parasoft/parabank` image and exposes it on port 8080. |
+| `DECISIONS.md` | Records framework decisions, supporting evidence, trade-offs and limitations. |
 
 ## Running it locally
 
 ### Prerequisites
 
-- Node.js 20 or later (CI runs 20, I develop on 22)
+- Node.js (CI uses 20; local development is on 22)
 - Docker
 
 ### 1. Start ParaBank
@@ -27,30 +47,24 @@ A fresh container can accept web requests before its database is ready for the t
 docker compose up -d
 ```
 
-This reads `docker-compose.yml` and starts ParaBank in the background.
-
-### 2. Initialise and verify ParaBank readiness
+### 2. Initialise and verify ParaBank
 
 ```bash
 ./scripts/wait-for-parabank.sh
 ```
 
-The readiness script calls ParaBank's `initializeDB` endpoint until it receives HTTP `204`, then verifies that the seeded `john/demo` customer can be read through the REST login endpoint with HTTP `200`.
+The script calls ParaBank's `initializeDB` endpoint until it returns HTTP `204`, then checks that the seeded `john/demo` customer can be read through the REST login endpoint with HTTP `200`.
 
-Run this after `docker compose up -d` and before starting the Playwright tests.
+Run it once after starting the container and before the tests. `initializeDB` resets the ParaBank database, so running it during a test run would remove data the tests created.
 
 ### 3. Install dependencies
-
-On the first setup:
 
 ```bash
 npm ci
 npx playwright install chromium
 ```
 
-`npm ci` installs the package versions recorded in `package-lock.json` and fails if the lockfile and `package.json` do not match.
-
-`npx playwright install chromium` downloads the Chromium browser that Playwright uses for the tests.
+`npm ci` installs the exact versions in `package-lock.json`. The second command downloads the Chromium browser Playwright uses.
 
 ### 4. Run the tests
 
@@ -72,108 +86,92 @@ docker compose down
 
 ## What is tested
 
-The current suite contains 8 tests covering:
+The suite contains 10 UI tests in 6 spec files, run on Chromium.
 
-- ParaBank home page loads
-- New customer registration and automatic login
-- Registered customer persists and can log in again
-- Duplicate username registration is rejected
-- Registered customer can log in and view the account overview
-- Incorrect password is rejected
-- Empty login credentials show a validation error
-- A savings account can be opened and the account balances update
+- **Smoke:** the ParaBank home page loads.
+- **Registration:** a new customer can register and is logged in; a registered customer persists and can log in again; a duplicate username is rejected.
+- **Login:** a registered customer can log in and see the account overview; an incorrect password is rejected; empty credentials show a validation error.
+- **Accounts:** a savings account can be opened and the account balances update.
+- **Transfer:** after opening a second account, a $10 transfer shows a "Transfer Complete" confirmation with the correct amount, source account and destination account.
+- **End-to-end journey:** a single test registers a customer through the UI, opens a savings account and transfers $10 between the two accounts, without using the login fixtures. It checks the transfer confirmation, then confirms the source account shows one "Funds Transfer Sent" debit of $10.00 and the destination account shows one "Funds Transfer Received" credit of $10.00.
 
 ## What is not tested
 
-The current framework does not yet cover:
-
-- Money transfers
-- Account details page
+- Account balances after a transfer
+- Account details beyond the account number and transaction rows
 - API testing
-- A complete end-to-end customer journey
 - Cross-browser execution
 - Accessibility testing
 - Performance testing
 
-The current Playwright project runs against Chromium.
-
 ## CI with GitHub Actions
 
-The project uses GitHub Actions to run the Playwright suite:
+The workflow runs on pull requests and on pushes to `main`. The job:
 
-- On pull requests
-- On pushes to `main`
-
-The CI job:
-
-1. Runs on an Ubuntu runner
+1. Runs on an Ubuntu 26.04 runner
 2. Starts ParaBank as a Docker service container
 3. Sets up Node.js 20
 4. Installs dependencies with `npm ci`
-5. Installs Chromium and its required system dependencies
-6. Waits for ParaBank to be ready
-7. Runs the Playwright test suite
-8. Uploads the Playwright HTML report
-9. Prints the ParaBank container logs if the job fails. In failed run #2, the logs showed a database `object not found` error.
+5. Installs Chromium and its system dependencies
+6. Runs `scripts/wait-for-parabank.sh`
+7. Runs the Playwright suite
+8. Uploads the HTML report with `if: always()`, so it is kept when tests fail
+9. Prints the ParaBank container logs if the job fails
 
-The readiness check follows the ParaBank home-page redirects:
+For local runs, ParaBank is started with Docker Compose. In GitHub Actions, ParaBank runs as a service container defined directly in the workflow. Both use the same untagged `parasoft/parabank` image.
+
+## Debugging with traces
+
+Traces are recorded with `trace: 'on-first-retry'`. CI retries failing tests up to twice, so a trace is recorded on the first retry of a failing test. Locally, retries are set to 0, so no trace is recorded by default.
+
+To debug a CI failure, download the `playwright-report` artifact from the run, open it with `npx playwright show-report <folder>`, and open the trace on the failed test.
+
+To record traces locally:
 
 ```bash
-curl -sfL -m 10 http://localhost:8080/parabank/index.htm
+npx playwright test --trace on
 ```
 
-The check is retried up to 30 times, five seconds apart.
-
-The HTML report is uploaded with `if: always()` so test evidence is preserved even when the test step fails.
+Screenshots and videos are kept only for failed tests.
 
 ## Debugging the first CI failure
 
-The first CI run failed 7 of 8 tests, and the Playwright trace showed `POST /register.htm` returning 500.
+GitHub Actions Runs #1 and #2 failed on 13 October 2026 while the workflow used a basic `/parabank/` readiness check. In Run #2, 7 of the 8 tests in the suite at that time failed. All seven failing tests register a customer, while the smoke test passed. The failures occurred while waiting for registration-success UI such as the logged-in confirmation or welcome heading.
 
-The failure was linked to ParaBank initialisation behind the home-page redirect path.
+ParaBank's container logs for Run #2 showed `user lacks privilege or object not found: SEQUENCE` while executing `SELECT next_id FROM Sequence WHERE name = ?`.
 
-I reproduced the 500 with a fresh local container when registering before following that path.
+Between the Run #2 and Run #3 commits, the only repository change was the readiness request. It changed from `curl -sf /parabank/` to `curl -sfL -m 10 /parabank/index.htm`, adding redirect following and a per-request timeout. Runs #3 to #12 passed.
 
-The CI readiness check was changed to follow the redirects through `index.htm` before starting the tests.
-
-After the change, the PR workflow passed twice consecutively with all 8 tests passing.
+On 20 October, Run #13 introduced the stricter `scripts/wait-for-parabank.sh` check, which explicitly initialises the database and verifies the seeded `john/demo` login before Playwright starts. No CI run using the `index.htm` check had failed before this change, so I treat the script as precautionary hardening rather than as a fix for a new observed CI failure.
 
 ## Test data
 
-Registration tests create unique customers at runtime rather than relying on manually created users.
-
-The login tests also register a new customer before each test, log out, and then exercise the login scenario.
-
-This means the tests do not depend on `TEST_*` environment variables or customer data created by hand in a previous ParaBank session.
+Each test that needs a customer registers a new one at runtime with a unique username. Tests do not depend on customer data created by hand in an earlier ParaBank session.
 
 ## Known limitations
 
 ### Single-worker execution
 
-The suite currently runs with:
+The suite runs with `workers: 1`. I have observed registration failures when experimenting with overlapping workers, including a `--workers=4` run where 1 of 10 tests failed during customer registration with `"This username already exists"`, despite each test generating its own unique customer. The failure rate was not measured and the backend cause has not been established, so single-worker execution is a stability measure rather than a root-cause fix.
 
-```ts
-workers: 1
-```
-
-Overlapping customer registrations failed intermittently with `This username already exists`, even with unique UUID-based usernames. I reproduced the failure with a registration-only test using two workers.
-
-Serial runs passed. The failure rate was not measured, and the backend mechanism was not established.
-
-`workers: 1` is therefore a current stability measure, not a proven root-cause fix.
+`fullyParallel: true` is set in the config, but it does not provide concurrent test execution while `workers` remains set to `1`.
 
 ### Readiness probe scope
 
 The readiness script verifies that database initialisation completes and that seeded customer data can be read through the REST layer. It does not directly verify that customer registration works.
 
-### Demo and portfolio scope
+### Demo application, portfolio scope
 
-ParaBank is a simplified demo application, and this is a portfolio framework rather than production infrastructure.
+ParaBank is a simplified demo application. Its behaviour and API do not represent a real banking architecture, and this is a portfolio framework rather than production infrastructure.
 
 ### Locators
 
-Where I could not use a role or label locator, the framework uses stable attributes such as `input[name="username"]`.
+ParaBank's UI has limited accessible names and labels. Where a role or label locator is not possible, the framework uses stable attributes such as `input[name="username"]`.
 
 ### Docker image version
 
-The `parasoft/parabank` Docker image is not pinned to a specific version. A future image release could therefore change application behaviour without any change to this repository.
+The `parasoft/parabank` image is not pinned to a version, locally or in CI. A future image release could change application behaviour without any change to this repository.
+
+## AI-assisted development
+
+I used AI assistants to explain concepts and to review my code and documentation. I wrote the code and the decisions in this repository myself and can explain each of them.
