@@ -184,6 +184,7 @@ Keeps interaction locators private so specs cannot bypass the page object by rea
 
 A locator method creates a new locator each time it is called, while a field is created once. For these small locators the cost is expected to be negligible, but it has not been measured.
 
+
 ### Follow ParaBank redirects in the CI readiness check (superseded)
 
 **Superseded**
@@ -214,6 +215,7 @@ The check only proves that the home-page redirect path completes. It could still
 
 Why one fresh local run passed without opening the home page first was not established.
 
+
 ### Initialise ParaBank database and verify seeded data before starting tests
 
 **Technical decision:**
@@ -243,6 +245,7 @@ The script deliberately treats only HTTP `204` as successful initialisation, so 
 The seeded-login probe proves that database-backed customer data is readable through the REST layer. It does not directly prove that customer registration works.
 
 The local validation and two CI runs are a small sample; no failure rate was measured. The old readiness check was not rerun with `workers: 1`, so the successful runs do not establish that the new probe caused the improvement.
+
 
 ### Use test-scoped fixtures instead of shared `beforeEach` setup
 
@@ -279,3 +282,79 @@ The fixture dependency chain is more abstract than inline setup, so a reader has
 `authenticatedPage` performs a real login for every test that requests it, which adds extra UI setup time.
 
 Because `authenticatedPage` depends on `registeredCustomer`, a failure in registration or login can make every test that uses `authenticatedPage` fail. The fixture boundary makes the failure location clearer, but the dependency still creates a wider blast radius.
+
+
+### JSON Response Handling
+
+**Technical decision:**
+
+Set `Accept: application/json` once in `ParaBankApiClient` and assert the response `content-type` in each API test before parsing JSON.
+
+**Why I made it:**
+
+My `curl` tests showed that ParaBank returns `Content-Type: application/xml` without the `Accept` header and `application/json` when the header is included.
+
+**Risk it reduces:**
+
+Without the header assertion, an unexpected XML response could pass the HTTP 200 check and fail later at `response.json()` with a parsing error that doesn't clearly identify the wrong response format.
+
+**Trade-off:**
+
+Checking `content-type` in every test adds repeated assertions. The client also always requests JSON, so tests that need a different format or no `Accept` header must use Playwright's `request` directly.
+
+
+### Returning Raw APIResponse
+
+**Technical decision:**
+
+Return the raw Playwright `APIResponse` from the API client instead of parsing and returning the JSON body.
+
+**Why I made it:**
+
+I wanted assertions to remain in individual tests rather than shared client code, so failures are easier to trace back to the specific test scenario.
+
+**Risk it reduces:**
+
+Avoids hiding assertions inside shared client methods, where failures can be harder to trace to a specific scenario. It also preserves access to the raw HTTP status, which will be needed for negative-path testing.
+
+**Trade-off:**
+
+Each test repeats the same steps: checking the status, validating the `Content-Type` header and calling `response.json()`. If a developer forgets the header assertion, the test loses the protection against unexpected response formats established in JSON Response Handling Decision.
+
+
+### REST Endpoints from the OpenAPI Specification
+
+**Technical decision:**
+
+Use REST endpoints documented in ParaBank's OpenAPI specification at `/parabank/services/bank/openapi.yaml`, rather than SOAP services.
+
+**Why I made it:**
+
+ParaBank's `services.htm` lists both SOAP and REST services. I used the OpenAPI specification to identify the REST endpoints and tested login, customer details and accounts against the running application.
+
+**Risk it reduces:**
+
+The specification provided the endpoint paths and HTTP methods, while my API tests confirmed that three of those endpoints work against the running application. This reduces reliance on documentation alone.
+
+**Trade-off:**
+
+SOAP services remain untested. The OpenAPI specification is not guaranteed to be accurate; for example, I found a GET operation described as "create". Documented behaviour still needs to be verified.
+
+
+### Avoiding Database Reset Endpoints
+
+**Technical decision:**
+
+Do not call `/cleanDB` or `/initializeDB` in automated tests.
+
+**Why I made it:**
+
+The OpenAPI specification describes these as database clean and initialise operations. The SOAP service page also describes equivalent reset operations. My UI and API tests share the seeded `john/demo` data, so a database reset during execution could affect unrelated tests.
+
+**Risk it reduces:**
+
+The existing transfer test already changes account balances in the shared database. Calling a reset endpoint during execution could introduce further state changes and cause unrelated tests to fail.
+
+**Trade-off:**
+
+The suite cannot automatically restore a known database state between runs, so tests remain dependent on existing data and changes from earlier tests. Test independence is not fully established: a previous run with `--workers=4` had one failure in a 10-test run when registration reported `"This username already exists"`.

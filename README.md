@@ -172,6 +172,20 @@ ParaBank's UI has limited accessible names and labels. Where a role or label loc
 
 The `parasoft/parabank` image is not pinned to a version, locally or in CI. A future image release could change application behaviour without any change to this repository.
 
+### ParaBank API behaviour
+
+ParaBank's login endpoint includes credentials in the URL path (`/login/{username}/{password}`), which may expose them through URL logging.
+
+The login API response also includes the customer's SSN, as observed in the `curl` output. This is ParaBank's response behaviour, not a data leak introduced by this test framework.
+
+### OpenAPI specification mismatch
+
+The specification describes `GET .../transactions/amount/{amount}` as "create". GET is not expected to create resources, and the SOAP equivalent is described as retrieving transactions. This endpoint has not been tested, so its actual behaviour remains unverified.
+
+### API seeded data dependency
+
+The API tests rely on ParaBank's seeded `john/demo` customer and associated accounts. They may fail if this data is reset or unavailable.
+
 ## AI-assisted development
 
 I used AI assistants to explain concepts and to review my code and documentation. I wrote the code and the decisions in this repository myself and can explain each of them.
