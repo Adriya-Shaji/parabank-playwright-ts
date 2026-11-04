@@ -152,7 +152,7 @@ Each test that needs a customer registers a new one at runtime with a unique use
 
 ### Single-worker execution
 
-The suite runs with `workers: 1`. I have observed registration failures when experimenting with overlapping workers, including a `--workers=4` run where 1 of 10 tests failed during customer registration with `"This username already exists"`, despite each test generating its own unique customer. The failure rate was not measured and the backend cause has not been established, so single-worker execution is a stability measure rather than a root-cause fix.
+The suite runs with `workers: 1`. One registration failure was observed in a `--workers=4` run, with the error `"This username already exists"`, despite each test generating its own unique customer. The failure rate was not measured and the backend cause has not been established, so single-worker execution is a stability measure rather than a root-cause fix.
 
 `fullyParallel: true` is set in the config, but it does not provide concurrent test execution while `workers` remains set to `1`.
 

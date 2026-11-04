@@ -357,4 +357,4 @@ The existing transfer test already changes account balances in the shared databa
 
 **Trade-off:**
 
-The suite cannot automatically restore a known database state between runs, so tests remain dependent on existing data and changes from earlier tests. Test independence is not fully established: a previous run with `--workers=4` had one failure in a 10-test run when registration reported `"This username already exists"`.
+The suite cannot automatically restore a known database state between runs, so tests remain dependent on existing data and changes from earlier tests. Test independence is not fully established: one registration failure was observed in a `--workers=4` run, with the error `"This username already exists"`.
