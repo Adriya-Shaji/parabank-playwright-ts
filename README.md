@@ -152,7 +152,7 @@ Each test that needs a customer registers a new one at runtime with a unique use
 
 ### Single-worker execution
 
-The suite runs with `workers: 1`. I have observed registration failures when experimenting with overlapping workers, including a `--workers=4` run where 1 of 10 tests failed during customer registration with `"This username already exists"`, despite each test generating its own unique customer. The failure rate was not measured and the backend cause has not been established, so single-worker execution is a stability measure rather than a root-cause fix.
+The suite runs with `workers: 1`. One registration failure was observed in a `--workers=4` run, with the error `"This username already exists"`, despite each test generating its own unique customer. The failure rate was not measured and the backend cause has not been established, so single-worker execution is a stability measure rather than a root-cause fix.
 
 `fullyParallel: true` is set in the config, but it does not provide concurrent test execution while `workers` remains set to `1`.
 
@@ -171,6 +171,20 @@ ParaBank's UI has limited accessible names and labels. Where a role or label loc
 ### Docker image version
 
 The `parasoft/parabank` image is not pinned to a version, locally or in CI. A future image release could change application behaviour without any change to this repository.
+
+### ParaBank API behaviour
+
+ParaBank's login endpoint includes credentials in the URL path (`/login/{username}/{password}`), which may expose them through URL logging.
+
+The login API response also includes the customer's SSN, as observed in the `curl` output. This is ParaBank's response behaviour, not a data leak introduced by this test framework.
+
+### OpenAPI specification mismatch
+
+The specification describes `GET .../transactions/amount/{amount}` as "create". GET is not expected to create resources, and the SOAP equivalent is described as retrieving transactions. This endpoint has not been tested, so its actual behaviour remains unverified.
+
+### API seeded data dependency
+
+The API tests rely on ParaBank's seeded `john/demo` customer and associated accounts. They may fail if this data is reset or unavailable.
 
 ## AI-assisted development
 
