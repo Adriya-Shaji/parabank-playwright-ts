@@ -21,6 +21,36 @@ export async function requireOk(
     }
 }
 
+// Check that the API response contains valid account details
+// for the expected customer and account type.
+function isExpectedAccount(
+    value: unknown,
+    customerId: number,
+    accountType: AccountType
+): value is Account {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+
+    if (
+        !('id' in value) ||
+        !('customerId' in value) ||
+        !('type' in value) ||
+        !('balance' in value)
+    ) {
+        return false;
+    }
+
+    return (
+        typeof value.id === 'number' &&
+        Number.isInteger(value.id) &&
+        value.customerId === customerId &&
+        value.type === accountType &&
+        typeof value.balance === 'number' &&
+        Number.isFinite(value.balance)
+    );
+}
+
 // Create an account through the API, confirm it through an independent
 // read-back, and return the stored account details.
 export async function openAccountAndConfirm(
@@ -41,23 +71,11 @@ export async function openAccountAndConfirm(
     // 2. Validate creation response
     const createdAccount: unknown = await response.json();
 
-    if (
-        typeof createdAccount !== 'object' ||
-        createdAccount === null ||
-        !('id' in createdAccount) ||
-        typeof createdAccount.id !== 'number' ||
-        !Number.isInteger(createdAccount.id) ||
-        !('customerId' in createdAccount) ||
-        createdAccount.customerId !== customerId ||
-        !('type' in createdAccount) ||
-        createdAccount.type !== accountType
-    ) {
+    if (!isExpectedAccount(createdAccount, customerId, accountType)) {
         throw new Error(
-            'Account creation returned invalid account details'
+            `Invalid account creation response: ${JSON.stringify(createdAccount)}`
         );
     }
-
-    const createdAccountId = createdAccount.id;
 
     // 3. Read accounts back
     const accountsResponse = await api.getCustomerAccounts(customerId);
@@ -68,7 +86,7 @@ export async function openAccountAndConfirm(
 
     if (!Array.isArray(accounts)) {
         throw new Error(
-            'Customer accounts response is not an array'
+            `Customer accounts response is not an array: ${JSON.stringify(accounts)}`
         );
     }
 
@@ -78,34 +96,22 @@ export async function openAccountAndConfirm(
             typeof account === 'object' &&
             account !== null &&
             'id' in account &&
-            account.id === createdAccountId
+            account.id === createdAccount.id
     );
 
-    // 5. Validate the stored account
-    if (
-        typeof storedAccount !== 'object' ||
-        storedAccount === null ||
-        !('customerId' in storedAccount) ||
-        storedAccount.customerId !== customerId ||
-        !('type' in storedAccount) ||
-        storedAccount.type !== accountType ||
-        !('id' in storedAccount) ||
-        typeof storedAccount.id !== 'number' ||
-        !Number.isInteger(storedAccount.id) ||
-        !('balance' in storedAccount) ||
-        typeof storedAccount.balance !== 'number' ||
-        !Number.isFinite(storedAccount.balance)
-    ) {
+    if (storedAccount === undefined) {
         throw new Error(
-            `Account ${createdAccountId} was not found or had invalid details during read-back`
+            `Account ${createdAccount.id} was not found in the customer accounts list`
+        );
+    }
+
+    // 5. Validate the stored account
+    if (!isExpectedAccount(storedAccount, customerId, accountType)) {
+        throw new Error(
+            `Invalid stored account ${createdAccount.id}: ${JSON.stringify(storedAccount)}`
         );
     }
 
     // 6. Return the stored account
-    return {
-        id: storedAccount.id,
-        customerId: storedAccount.customerId,
-        type: accountType,
-        balance: storedAccount.balance
-    };
+    return storedAccount;
 }
