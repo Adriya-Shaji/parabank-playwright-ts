@@ -26,9 +26,9 @@ I run ParaBank locally in Docker instead of relying on the public hosted environ
 | Path | Purpose |
 | --- | --- |
 | `pages/` | Page objects that contain reusable locators and UI interaction methods. |
-| `tests/` | Playwright spec files covering smoke, registration, login, account, transfer and end-to-end scenarios. |
+| `tests/` | UI, API, API-assisted UI and end-to-end Playwright tests. |
 | `fixtures/` | Reusable Playwright fixtures for page objects, unique customer data, registered customers and a logged-in page. |
-| `utils/` | Shared test utilities, including runtime customer-data generation. |
+| `utils/` | Customer-data generation, API client and account setup helpers. |
 | `scripts/` | Supporting automation scripts that initialise ParaBank and check that it is ready before the Playwright suite starts. |
 | `.github/workflows/` | GitHub Actions workflow used to run the Playwright suite in CI. |
 | `docker-compose.yml` | Defines the local ParaBank Docker service using the `parasoft/parabank` image and exposes it on port 8080. |
@@ -86,23 +86,24 @@ docker compose down
 
 ## What is tested
 
-The suite contains 10 UI tests in 6 spec files, run on Chromium.
+The suite contains **15 tests in 9 spec files**, running on Chromium.
 
-- **Smoke:** the ParaBank home page loads.
-- **Registration:** a new customer can register and is logged in; a registered customer persists and can log in again; a duplicate username is rejected.
-- **Login:** a registered customer can log in and see the account overview; an incorrect password is rejected; empty credentials show a validation error.
-- **Accounts:** a savings account can be opened and the account balances update.
-- **Transfer:** after opening a second account, a $10 transfer shows a "Transfer Complete" confirmation with the correct amount, source account and destination account.
-- **End-to-end journey:** a single test registers a customer through the UI, opens a savings account and transfers $10 between the two accounts, without using the login fixtures. It checks the transfer confirmation, then confirms the source account shows one "Funds Transfer Sent" debit of $10.00 and the destination account shows one "Funds Transfer Received" credit of $10.00.
+- **Smoke:** ParaBank home page loads.
+- **Registration:** Successful registration, login after registration and duplicate username rejection.
+- **Login:** Successful login, incorrect password and empty credentials.
+- **Accounts:** SAVINGS account creation through the UI, including source and destination balance checks.
+- **UI transfer:** $10 transfer with confirmation of amount and account numbers.
+- **API:** Customer login, customer details, account validation and a $10 transfer with balance checks.
+- **API-assisted UI transfer:** Creates and confirms a SAVINGS account through the API, transfers $10 through the UI, verifies both balances through the API and the destination balance through Accounts Overview.
+- **End-to-end journey:** Registers a customer, opens a SAVINGS account, transfers $10 and verifies the debit and credit transactions through the UI.
 
 ## What is not tested
 
-- Account balances after a transfer
-- Account details beyond the account number and transaction rows
-- API testing
-- Cross-browser execution
-- Accessibility testing
-- Performance testing
+- Cross-browser execution beyond Chromium.
+- Accessibility and performance testing.
+- Full API error and negative-path behaviour.
+- Parallel execution reliability.
+- All ParaBank account types and banking features.
 
 ## CI with GitHub Actions
 
@@ -178,13 +179,22 @@ ParaBank's login endpoint includes credentials in the URL path (`/login/{usernam
 
 The login API response also includes the customer's SSN, as observed in the `curl` output. This is ParaBank's response behaviour, not a data leak introduced by this test framework.
 
+The tested REST endpoints accepted requests without a browser session in local testing.
+
+The transfer API declares `application/json` but returns an unquoted plain-text success message.
+
+The create-account response reported `balance: 0`, although the stored balance was $100 after the opening deposit. The reason for the response value is unverified.
+
+API error behaviour has not been verified.
+
 ### OpenAPI specification mismatch
 
 The specification describes `GET .../transactions/amount/{amount}` as "create". GET is not expected to create resources, and the SOAP equivalent is described as retrieving transactions. This endpoint has not been tested, so its actual behaviour remains unverified.
 
 ### API seeded data dependency
 
-The API tests rely on ParaBank's seeded `john/demo` customer and associated accounts. They may fail if this data is reset or unavailable.
+The customer API tests use ParaBank's seeded `john/demo` data.
+The API transfer and API-assisted UI transfer tests use newly registered customers.
 
 ## AI-assisted development
 
