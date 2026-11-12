@@ -358,3 +358,83 @@ The existing transfer test already changes account balances in the shared databa
 **Trade-off:**
 
 The suite cannot automatically restore a known database state between runs, so tests remain dependent on existing data and changes from earlier tests. Test independence is not fully established: one registration failure was observed in a `--workers=4` run, with the error `"This username already exists"`.
+
+### API-assisted UI transfer test
+
+**Technical decision:** Create the SAVINGS account through the API, then transfer funds through the UI.
+
+**Why I made it:** Keeps account setup separate from the transfer behaviour being tested.
+
+**Risk it reduces:** Reduces the chance of an account-creation UI failure being mistaken for a transfer failure.
+
+**Trade-off:** API setup bypasses account creation through the UI.
+
+**How I would explain it in interview:** I use the API to prepare account data so the UI test focuses on transferring funds.
+
+**Possible interviewer challenge:** Doesn't this bypass UI testing?
+
+**My defence:** Separate tests cover SAVINGS account creation through the UI and the full banking journey. Registration remains in the UI because no registration endpoint was identified in the OpenAPI specification.
+
+### Account read-back validation
+
+**Technical decision:** Return the account retrieved through GET, not the account creation response.
+
+**Why I made it:** The creation response reported `balance: 0`, but the stored balance was $100.
+
+**Risk it reduces:** Detects missing accounts, incorrect customer ownership, wrong account types and non-finite balances.
+
+**Trade-off:** Adds an API request and dependency on the account retrieval endpoint.
+
+**How I would explain it in interview:** The create response showed a balance of 0 while the stored balance was 100, so I return the read-back account instead.
+
+**Possible interviewer challenge:** Does your helper verify the opening balance is $100?
+
+**My defence:** No. It verifies the account ID, customer ID, type and finite balance, not a specific opening amount. I also tested that an incorrect expected account type produces a useful error.
+
+### Account type mapping
+
+**Technical decision:** Map `CHECKING` to `0` and `SAVINGS` to `1` inside the API client.
+
+**Why I made it:** These values were verified from ParaBank's browser requests.
+
+**Risk it reduces:** Prevents incorrect numeric codes being repeated across tests.
+
+**Trade-off:** The mapping needs maintenance; LOAN is excluded because its code is unverified.
+
+**How I would explain it in interview:** Tests use readable account types while the API client handles the numeric values.
+
+**Possible interviewer challenge:** Why not support LOAN?
+
+**My defence:** I added only verified types needed for the current tests.
+
+### Deferred refactoring
+
+**Technical decision:** Defer extracting `getCustomerId()`, `getSourceAccountId()` and refactoring `openAccountAndConfirm()`.
+
+**Why I made it:** Login and source-account validation are already duplicated, but I prioritised completing A3.2.
+
+**Risk it reduces:** Keeping refactoring separate makes it easier to identify whether a failure comes from the new feature or changes to existing code.
+
+**Trade-off:** Login and source-account validation are duplicated across two tests, increasing maintenance effort.
+
+**How I would explain it in interview:** I identified the duplication and deferred extraction to a separate change.
+
+**Possible interviewer challenge:** Shouldn't shared setup be extracted now?
+
+**My defence:** Yes, reuse is justified. I chose to finish and verify A3.2 first.
+
+### Balance comparison in cents
+
+**Technical decision:** Convert balances to integer cents before comparing them.
+
+**Why I made it:** Decimal arithmetic in JavaScript can introduce floating-point rounding differences.
+
+**Risk it reduces:** Avoids false failures caused by floating-point precision.
+
+**Trade-off:** Assumes balances have at most two decimal places.
+
+**How I would explain it in interview:** I compare integer cents instead of subtracting decimal currency values.
+
+**Possible interviewer challenge:** Is `Math.round(amount * 100)` suitable for all financial calculations?
+
+**My defence:** No. It is suitable for the tested balances, but production financial calculations need stricter money handling.
