@@ -29,7 +29,7 @@ export default defineConfig({
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
-  ? [['html', { open: 'never' }]]
+  ? [['list'], ['html', { open: 'never' }]]
   : [['html', { open: 'on-failure' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
