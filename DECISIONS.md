@@ -223,7 +223,7 @@ Set `timeout: 30_000` and `expect.timeout: 5_000`. Both match Playwright's docum
 
 Explicit timeouts make the settings visible and reviewable.
 
-The slowest test took 1.1s to 2.1s across local runs and 2.6s in one GitHub Actions run, all using one worker.
+The slowest test took 1.1s to 2.1s across local runs, and 2.6s and 3.4s in two GitHub Actions runs, all using one worker.
 
 I kept the 30s test timeout to allow for slower CI execution and fixture setup. The 5s assertion timeout has been sufficient in observed runs, and no explicit timeout overrides were found in the test or helper files. Neither value has been tuned.
 
@@ -241,11 +241,11 @@ A test slowing from 1s to 20s could still pass without highlighting a performanc
 
 Review timeouts if the slowest test exceeds 10s in three consecutive CI runs, using per-test durations from the CI log.
 
-The 10s threshold is about four times the 2.6s maximum observed in CI. It is a review trigger, not a tuned performance limit.
+The 10s threshold is about three times the 3.4s maximum observed in CI. It is a review trigger, not a tuned performance limit.
 
 **Unverified:**
 
-CI per-test durations have been observed in one GitHub Actions run. Local and CI durations vary between runs.
+CI per-test durations come from two runs. They vary between runs.
 
 
 ### Use a trailing-slash `baseURL` with relative page paths
