@@ -151,6 +151,39 @@ Revisit this decision if the registration defect is resolved, the environment ch
 The 60-second threshold is approximately five times the 12.7-second baseline observed in one CI test run. It is a review trigger, not a performance limit.
 
 
+### Retry in CI only and record traces on first retry
+
+**Technical decision:**
+
+Use `retries: process.env.CI ? 2 : 0` and `trace: 'on-first-retry'`.
+
+**Why I made it:**
+
+Zero local retries show failures immediately. Two CI retries provide a chance to recover from two consecutive transient failures. More retries could hide instability and increase execution time. Two is a starting point, not a proven optimum.
+
+First-retry tracing avoids the overhead of recording traces for every test.
+
+**Risk it reduces:**
+
+Stops a transient failure from immediately blocking a merge and reduces routine tracing overhead.
+
+**Trade-off:**
+
+The trace captures the first retry, not the original failure. Timing issues may not reproduce. `screenshot: 'only-on-failure'` captures one frame of the failed state, without action history.
+
+Retries can hide instability if flaky results are ignored.
+
+The test-scoped `customer`, `registeredCustomer` and `authenticatedPage` fixtures run again on each attempt, creating fresh customer data. Registration and login repeat before the test body, increasing execution time. Previous backend changes are not rolled back.
+
+**Revisit trigger:**
+
+Review the HTML report for flaky results. Reassess the retry count if the same test is flaky in two consecutive CI runs.
+
+**Unverified:**
+
+No flaky result has been observed in CI. The `list` reporter works locally with `CI=true`, but has not yet been verified in GitHub Actions.
+
+
 ### Keep `goto()` on `AccountsOverviewPage`
 
 **Technical decision:**
