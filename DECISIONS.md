@@ -282,6 +282,39 @@ If a second environment is introduced, refactor URL configuration across Playwri
 The Node.js check verified URL resolution rules. Passing Playwright tests confirmed that the current navigation works locally.
 
 
+### Add the `list` reporter beside HTML in CI
+
+**Technical decision:**
+
+Use `[['list'], ['html', { open: 'never' }]]` in CI. Locally, keep HTML with `open: 'on-failure'`.
+
+**Why I made it:**
+
+The `list` reporter shows individual test results and durations in the console. HTML provides detailed reports for debugging.
+
+`open: 'never'` prevents the HTML reporter from opening or serving the report and blocking CI.
+
+A local run with `CI=true` confirmed that the `list` reporter prints individual test results.
+
+**Risk it reduces:**
+
+Makes failed and flaky tests easier to notice in CI logs without downloading the HTML report.
+
+**Trade-off:**
+
+Adds console output but no extra report artefact. JUnit XML was not added because the workflow does not use it.
+
+**Revisit trigger:**
+
+Review the reporter setup if CI logs become difficult to read or a tool requires JUnit XML.
+
+**Unverified:**
+
+The `list` reporter works locally with `CI=true`, but GitHub Actions output and flaky-test markers remain unverified.
+
+`playwright-report/index.html` existed after the local run, but it is unconfirmed whether that specific run generated it.
+
+
 ### Keep `goto()` on `AccountsOverviewPage`
 
 **Technical decision:**
