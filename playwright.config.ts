@@ -5,27 +5,36 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './tests',
-  /* Run tests in files in parallel */
-  fullyParallel: true,
+  // Keep Playwright's default limits explicit.
+  // Review individual test durations before reducing them.
+  timeout: 30_000,
+
+  expect: {
+    timeout: 5_000,
+  },
+  /* Tests within the same file are not automatically parallelised. */
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
 
-  /* Parallel registration has failed with "username already exists".
-   * The cause is not established; serial runs have passed every time.
+  /*
+   * Concurrent registrations failed with distinct usernames
+   * on an initialised ParaBank database.
+   * The backend mechanism remains unverified.
+   * One worker prevents concurrent test execution.
    */
   workers: 1,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
-  ? [['html', { open: 'never' }]]
+  ? [['list'], ['html', { open: 'never' }]]
   : [['html', { open: 'on-failure' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL: 'http://localhost:8080/parabank/',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
     trace: 'on-first-retry',
   },
 

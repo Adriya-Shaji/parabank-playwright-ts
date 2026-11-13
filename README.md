@@ -133,7 +133,7 @@ To record traces locally:
 npx playwright test --trace on
 ```
 
-Screenshots and videos are kept only for failed tests.
+Screenshots are captured on failure. Traces are recorded on the first retry in CI. Video recording is off.
 
 ## Debugging the first CI failure
 
@@ -172,6 +172,10 @@ ParaBank's UI has limited accessible names and labels. Where a role or label loc
 ### Docker image version
 
 The `parasoft/parabank` image is not pinned to a version, locally or in CI. A future image release could change application behaviour without any change to this repository.
+
+### ParaBank URL configuration
+
+The ParaBank URL is defined in `playwright.config.ts`, `utils/parabankApiClient.ts` (API paths) and `scripts/wait-for-parabank.sh`. Using another host or application path requires updating all three.
 
 ### ParaBank API behaviour
 
