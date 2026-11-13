@@ -5,6 +5,13 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './tests',
+  // Keep Playwright's default limits explicit.
+  // Review individual test durations before reducing them.
+  timeout: 30_000,
+
+  expect: {
+    timeout: 5_000,
+  },
   /* Tests within the same file are not automatically parallelised. */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
