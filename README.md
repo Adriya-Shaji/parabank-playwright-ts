@@ -133,7 +133,7 @@ To record traces locally:
 npx playwright test --trace on
 ```
 
-Screenshots and videos are kept only for failed tests.
+Screenshots are captured on failure. Traces are recorded on the first retry. Video recording is disabled by default.
 
 ## Debugging the first CI failure
 
