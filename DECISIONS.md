@@ -248,6 +248,40 @@ The 10s threshold is an initial review trigger based on the 1.9s observed maximu
 Per-test durations have only been measured in local runs, including one with `CI=true`. Per-test timings in GitHub Actions have not yet been verified with the new `list` reporter.
 
 
+### Use a trailing-slash `baseURL` with relative page paths
+
+**Technical decision:**
+
+Keep `baseURL: 'http://localhost:8080/parabank/'`. Page objects use relative paths such as `goto('overview.htm')`, without a leading slash.
+
+**Why I made it:**
+
+My Node.js URL check confirmed:
+
+- `accounts.htm` with `/parabank/` resolves to `/parabank/accounts.htm`.
+- `/accounts.htm`, or a base ending in `/parabank` without a trailing slash, resolves to `/accounts.htm`, dropping the application path.
+
+A `grep` search for `goto(` confirmed that the current navigation calls use relative paths.
+
+**Risk it reduces:**
+
+Keeps the UI host and application path in one configuration setting instead of repeating them in page objects.
+
+**Trade-off:**
+
+The `/parabank/` path is also used in `utils/parabankApiClient.ts` and `scripts/wait-for-parabank.sh`. Changing environments requires coordinated edits, as documented in the README.
+
+**Revisit trigger:**
+
+If a second environment is introduced, refactor URL configuration across Playwright, the API client and the readiness script in a separate PR, using `PARABANK_URL` as the shared setting.
+
+**Unverified:**
+
+`smoke.spec.ts` calls `page.goto('index.htm')` directly, unlike other tests that use page objects. This is an inconsistency, not a confirmed defect.
+
+The Node.js check verified URL resolution rules. Passing Playwright tests confirmed that the current navigation works locally.
+
+
 ### Keep `goto()` on `AccountsOverviewPage`
 
 **Technical decision:**
