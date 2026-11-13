@@ -310,7 +310,7 @@ Review the reporter setup if CI logs become difficult to read or a tool requires
 
 **Unverified:**
 
-The `list` reporter and per-test durations are verified in GitHub Actions. Flaky-test markers remain unverified because no test retried. HTML report artefact availability in CI has not yet been confirmed.
+The `list` reporter and per-test durations are verified in GitHub Actions. The HTML report artefact (playwright-report, 221 KB) was uploaded in CI. Flaky-test markers remain unverified because no test retried.
 
 
 ### Keep `goto()` on `AccountsOverviewPage`
