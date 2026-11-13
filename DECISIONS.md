@@ -223,7 +223,7 @@ Set `timeout: 30_000` and `expect.timeout: 5_000`. Both match Playwright's docum
 
 Explicit timeouts make the settings visible and reviewable.
 
-The slowest test took 1.1s in one local run and 1.9s in another run with `CI=true`, both using one worker.
+The slowest test took 1.1s to 2.1s across local runs and 2.6s in one GitHub Actions run, all using one worker.
 
 I kept the 30s test timeout to allow for slower CI execution and fixture setup. The 5s assertion timeout has been sufficient in observed runs, and no explicit timeout overrides were found in the test or helper files. Neither value has been tuned.
 
@@ -241,11 +241,11 @@ A test slowing from 1s to 20s could still pass without highlighting a performanc
 
 Review timeouts if the slowest test exceeds 10s in three consecutive CI runs, using per-test durations from the CI log.
 
-The 10s threshold is an initial review trigger based on the 1.9s observed maximum, not a tuned performance limit.
+The 10s threshold is about four times the 2.6s maximum observed in CI. It is a review trigger, not a tuned performance limit.
 
 **Unverified:**
 
-Per-test durations have only been measured in local runs, including one with `CI=true`. Per-test timings in GitHub Actions have not yet been verified with the new `list` reporter.
+CI per-test durations have been observed in one GitHub Actions run. Local and CI durations vary between runs.
 
 
 ### Use a trailing-slash `baseURL` with relative page paths
@@ -290,11 +290,11 @@ Use `[['list'], ['html', { open: 'never' }]]` in CI. Locally, keep HTML with `op
 
 **Why I made it:**
 
-The `list` reporter shows individual test results and durations in the console. HTML provides detailed reports for debugging.
+The `list` reporter shows individual test results and durations in the CI log. HTML provides detailed reports for debugging.
 
 `open: 'never'` prevents the HTML reporter from opening or serving the report and blocking CI.
 
-A local run with `CI=true` confirmed that the `list` reporter prints individual test results.
+A GitHub Actions run confirmed that the `list` reporter displays individual test results and durations.
 
 **Risk it reduces:**
 
@@ -310,9 +310,7 @@ Review the reporter setup if CI logs become difficult to read or a tool requires
 
 **Unverified:**
 
-The `list` reporter works locally with `CI=true`, but GitHub Actions output and flaky-test markers remain unverified.
-
-`playwright-report/index.html` existed after the local run, but it is unconfirmed whether that specific run generated it.
+The `list` reporter and per-test durations are verified in GitHub Actions. Flaky-test markers remain unverified because no test retried. HTML report artefact availability in CI has not yet been confirmed.
 
 
 ### Keep `goto()` on `AccountsOverviewPage`
