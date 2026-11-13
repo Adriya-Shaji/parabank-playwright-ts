@@ -173,6 +173,10 @@ ParaBank's UI has limited accessible names and labels. Where a role or label loc
 
 The `parasoft/parabank` image is not pinned to a version, locally or in CI. A future image release could change application behaviour without any change to this repository.
 
+### ParaBank URL configuration
+
+The ParaBank URL is defined in `playwright.config.ts`, `utils/parabankApiClient.ts` (API paths) and `scripts/wait-for-parabank.sh`. Using another host or application path requires updating all three.
+
 ### ParaBank API behaviour
 
 ParaBank's login endpoint includes credentials in the URL path (`/login/{username}/{password}`), which may expose them through URL logging.
