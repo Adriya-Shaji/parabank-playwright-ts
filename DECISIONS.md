@@ -184,6 +184,35 @@ Review the HTML report for flaky results. Reassess the retry count if the same t
 No flaky result has been observed in CI. The `list` reporter works locally with `CI=true`, but has not yet been verified in GitHub Actions.
 
 
+### Remove video recording and keep failure screenshots
+
+**Technical decision:**
+
+Remove `video: 'retain-on-failure'`. Keep `screenshot: 'only-on-failure'` and `trace: 'on-first-retry'`.
+
+**Why I made it:**
+
+Screenshots capture the failed state. In CI, traces record the first retry. A screenshot is usually enough for visible failures in ParaBank's mostly server-rendered UI.
+
+Locally, I use `--trace on` or Playwright UI mode for debugging because local retries are disabled.
+
+**Risk it reduces:**
+
+Avoids recording video for every test just to retain evidence from failures. The overhead has not been measured.
+
+**Trade-off:**
+
+Without video, I lose the full visual sequence of the initial failure. A screenshot shows one frame, while the CI trace captures the retry, which may behave differently.
+
+**Revisit trigger:**
+
+Reconsider video if a failure cannot be explained using the screenshot, retry trace and ParaBank container logs.
+
+**Unverified:**
+
+No test failure has occurred in the inspected runs, so no failure screenshot has been observed in `test-results/`. The CI workflow uploads only `playwright-report/`; screenshot availability in that artefact remains unverified.
+
+
 ### Keep `goto()` on `AccountsOverviewPage`
 
 **Technical decision:**
