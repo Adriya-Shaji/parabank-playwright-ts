@@ -28,7 +28,6 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:8080/parabank/',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
     trace: 'on-first-retry',
   },
 
