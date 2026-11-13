@@ -213,6 +213,41 @@ Reconsider video if a failure cannot be explained using the screenshot, retry tr
 No test failure has occurred in the inspected runs, so no failure screenshot has been observed in `test-results/`. The CI workflow uploads only `playwright-report/`; screenshot availability in that artefact remains unverified.
 
 
+### Keep Playwright's default timeouts explicit
+
+**Technical decision:**
+
+Set `timeout: 30_000` and `expect.timeout: 5_000`. Both match Playwright's documented defaults.
+
+**Why I made it:**
+
+Explicit timeouts make the settings visible and reviewable.
+
+The slowest test took 1.1s in one local run and 1.9s in another run with `CI=true`, both using one worker.
+
+I kept the 30s test timeout to allow for slower CI execution and fixture setup. The 5s assertion timeout has been sufficient in observed runs, and no explicit timeout overrides were found in the test or helper files. Neither value has been tuned.
+
+**Risk it reduces:**
+
+Avoids relying on hidden defaults that reviewers may overlook.
+
+**Trade-off:**
+
+A stuck test can take up to 30s per attempt, or approximately 90s across three attempts with two CI retries.
+
+A test slowing from 1s to 20s could still pass without highlighting a performance regression.
+
+**Revisit trigger:**
+
+Review timeouts if the slowest test exceeds 10s in three consecutive CI runs, using per-test durations from the CI log.
+
+The 10s threshold is an initial review trigger based on the 1.9s observed maximum, not a tuned performance limit.
+
+**Unverified:**
+
+Per-test durations have only been measured in local runs, including one with `CI=true`. Per-test timings in GitHub Actions have not yet been verified with the new `list` reporter.
+
+
 ### Keep `goto()` on `AccountsOverviewPage`
 
 **Technical decision:**
