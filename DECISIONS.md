@@ -128,7 +128,7 @@ Configure Playwright with `workers: 1` and `fullyParallel: false`. One worker pr
 
 **Why I made it:**
 
-Parallel runs passed sometimes and failed sometimes during customer registration with `This username already exists`, even though each test generated a different UUID-based username.
+One registration failure was observed in a 10-test `--workers=4` run with `This username already exists`, even though each test generated a different UUID-based username.
 
 I isolated the behaviour with a registration-only experiment on an already initialised ParaBank container. Two workers registered two different UUID-based usernames concurrently; one registration succeeded and the other was rejected as an existing username.
 
