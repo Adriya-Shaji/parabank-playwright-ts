@@ -155,7 +155,7 @@ Each test that needs a customer registers a new one at runtime with a unique use
 
 The suite runs with `workers: 1`. One registration failure was observed in a `--workers=4` run, with the error `"This username already exists"`, despite each test generating its own unique customer. The failure rate was not measured and the backend cause has not been established, so single-worker execution is a stability measure rather than a root-cause fix.
 
-`fullyParallel: true` is set in the config, but it does not provide concurrent test execution while `workers` remains set to `1`.
+`fullyParallel: false` is set in the config. While `workers` is 1 it makes no runtime difference. It is there so the config does not claim the tests are safe to split.
 
 ### Readiness probe scope
 
