@@ -160,3 +160,50 @@ export async function getStoredAccount(
     // 5. Return the validated account
     return storedAccount;
 }
+
+// Log in and return the customer id and the id of their only account.
+// For freshly registered customers, who start with exactly one account.
+export async function loginAndGetOnlyAccount(
+    api: ParaBankApiClient,
+    username: string,
+    password: string
+): Promise<{ customerId: number; accountId: number }> {
+    const loginResponse = await api.login(username, password);
+    await requireOk(loginResponse, 'login');
+
+    const customer: unknown = await loginResponse.json();
+    if (
+        typeof customer !== 'object' ||
+        customer === null ||
+        !('id' in customer) ||
+        typeof customer.id !== 'number' ||
+        !Number.isInteger(customer.id)
+    ) {
+        throw new Error(`Invalid login response: ${JSON.stringify(customer)}`);
+    }
+
+    const accountsResponse = await api.getCustomerAccounts(customer.id);
+    await requireOk(accountsResponse, 'get customer accounts');
+
+    const accounts: unknown = await accountsResponse.json();
+    if (!Array.isArray(accounts) || accounts.length !== 1) {
+        throw new Error(
+            `Expected exactly one account for a new customer: ${JSON.stringify(accounts)}`
+        );
+    }
+
+    const onlyAccount: unknown = accounts[0];
+    if (
+        typeof onlyAccount !== 'object' ||
+        onlyAccount === null ||
+        !('id' in onlyAccount) ||
+        typeof onlyAccount.id !== 'number' ||
+        !Number.isInteger(onlyAccount.id) ||
+        !('customerId' in onlyAccount) ||
+        onlyAccount.customerId !== customer.id
+    ) {
+        throw new Error(`Invalid account: ${JSON.stringify(onlyAccount)}`);
+    }
+
+    return { customerId: customer.id, accountId: onlyAccount.id };
+}
