@@ -750,3 +750,20 @@ I confirmed a database primary-key violation during account creation and server-
 I could not independently confirm the exact backend mechanisms behind these failures.
 
 **Final decision: Keep `workers: 1` for reliable test execution against the shared ParaBank environment.**
+
+
+## Negative API tests pin observed error behaviour
+
+**Decision:** Negative API tests assert the exact status, content type and error text that ParaBank returns today.
+
+**Observed:** Invalid credentials and unknown customer ids return HTTP 400 with a `text/plain` body. Swagger documents a `default` response with `application/json` and does not specify error statuses or formats.
+
+**Why exact values:** A range check such as "any 4xx" would hide a regression to 5xx. An exact text match verifies that the response body contains only the expected error message, rather than customer data.
+
+**Design concerns noted, not raised as defects:**
+- 401 would be more conventional for failed authentication, although this endpoint does not use HTTP authentication.
+- Credentials are passed in the URL path, which exposes them to access and proxy logs. A production banking API should not do this.
+- Swagger lists `application/json` for its default response, but the observed error responses use `text/plain`. The documentation does not clearly define error response formats.
+- A successful login returns the customer's full SSN. A production banking API should mask or omit it, because returning it on every login widens exposure for no business need.
+
+**Trade-off:** If ParaBank changes its error format, these tests fail. That is intended, because a contract change should be reviewed rather than silently accepted.
