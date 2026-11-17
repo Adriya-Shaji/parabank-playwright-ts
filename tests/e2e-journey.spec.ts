@@ -8,7 +8,8 @@ import { AccountActivityPage } from "../pages/AccountActivityPage.js";
 const DEBIT_COLUMN = 2;
 const CREDIT_COLUMN = 3;
 
-test('customer completes end-to-end banking journey @e2e',
+test('customer completes end-to-end banking journey',
+    { tag: '@e2e' },
     async ({ page, customer, registerPage }) => {
         const accountsOverviewPage = new AccountsOverviewPage(page);
 

@@ -1,8 +1,7 @@
 
 import { test, expect} from "@playwright/test"
 
-test('ParaBank home page loads', async ({ page }) => {
-  await page.goto('index.htm');
+test('ParaBank home page loads', { tag: '@smoke' }, async ({ page }) => {  await page.goto('index.htm');
 
   await expect(page).toHaveTitle(/ParaBank/);
   await expect(

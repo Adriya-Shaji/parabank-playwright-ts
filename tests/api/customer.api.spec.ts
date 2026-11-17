@@ -1,18 +1,21 @@
 import { test, expect } from '@playwright/test';
 import { ParaBankApiClient } from '../../utils/parabankApiClient.js';
 
-test('login returns the customer details as JSON', async ({ request }) => {
-    const api = new ParaBankApiClient(request);
+test(
+    'login returns the customer details as JSON',
+    { tag: '@smoke' },
+    async ({ request }) => {
+        const api = new ParaBankApiClient(request);
 
-    const response = await api.login('john', 'demo');
+        const response = await api.login('john', 'demo');
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type']).toContain('application/json');
+        expect(response.status()).toBe(200);
+        expect(response.headers()['content-type']).toContain('application/json');
 
-    const body = await response.json();
-    expect(typeof body.id).toBe('number');
-    expect(body.firstName).toBe('John');
-});
+        const body = await response.json();
+        expect(typeof body.id).toBe('number');
+        expect(body.firstName).toBe('John');
+    });
 
 test('customer details match the logged-in customer', async ({ request }) => {
     // Step 1: Login
