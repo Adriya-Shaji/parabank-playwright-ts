@@ -1,7 +1,11 @@
 import { test, expect } from "../../fixtures/test-fixtures.js";
 import { randomUUID } from "node:crypto";
 import { ParaBankApiClient } from "../../utils/parabankApiClient.js";
-import { getStoredAccount, loginAndGetOnlyAccount } from "../../utils/accountSetup.js";
+import {
+    getStoredAccount,
+    loginAndGetOnlyAccount,
+    openAccountAndConfirm
+} from "../../utils/accountSetup.js";
 
 const NON_EXISTENT_ACCOUNT_ID = 999999999;
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid username and/or password';
@@ -91,5 +95,108 @@ test.describe('Negative API paths: transfers', () => {
             expect(await response.text()).toBe(
                 `Could not find account number ${sourceAccountId} and/or ${NON_EXISTENT_ACCOUNT_ID}`
             );
+        });
+
+    test('negative amount transfer is rejected and both balances are unchanged',
+        async ({ request, registeredCustomer }) => {
+            const api = new ParaBankApiClient(request);
+
+            const { customerId, accountId: sourceAccountId } =
+                await loginAndGetOnlyAccount(
+                    api,
+                    registeredCustomer.username,
+                    registeredCustomer.password
+                );
+
+            const destination = await openAccountAndConfirm(
+                api, customerId, 'SAVINGS', sourceAccountId
+            );
+
+            const sourceBefore = await getStoredAccount(
+                api, customerId, sourceAccountId, 'CHECKING'
+            );
+            const destinationBefore = await getStoredAccount(
+                api, customerId, destination.id, 'SAVINGS'
+            );
+
+            // Setup completed. The known defect is in negative transfer handling.
+            test.fail(
+                true,
+                'Known defect: ParaBank accepts negative transfers and reverses money movement.'
+            );
+
+            const response = await api.transfer(
+                sourceAccountId, destination.id, -10
+            );
+
+            const sourceAfter = await getStoredAccount(
+                api, customerId, sourceAccountId, 'CHECKING'
+            );
+            const destinationAfter = await getStoredAccount(
+                api, customerId, destination.id, 'SAVINGS'
+            );
+
+            // Neither account should change when the transfer is rejected.
+            expect.soft(toCents(sourceAfter.balance))
+                .toBe(toCents(sourceBefore.balance));
+
+            expect.soft(toCents(destinationAfter.balance))
+                .toBe(toCents(destinationBefore.balance));
+
+            expect.soft(response.ok()).toBe(false);
+        });
+
+    test('non-numeric amount is rejected and both balances are unchanged',
+        async ({ request, registeredCustomer }) => {
+            const api = new ParaBankApiClient(request);
+
+            const { customerId, accountId: sourceAccountId } =
+                await loginAndGetOnlyAccount(
+                    api,
+                    registeredCustomer.username,
+                    registeredCustomer.password
+                );
+
+            const destination = await openAccountAndConfirm(
+                api, customerId, 'SAVINGS', sourceAccountId
+            );
+
+            const sourceBefore = await getStoredAccount(
+                api, customerId, sourceAccountId, 'CHECKING'
+            );
+            const destinationBefore = await getStoredAccount(
+                api, customerId, destination.id, 'SAVINGS'
+            );
+
+            // Bypass the typed API client to send malformed input deliberately.
+            const response = await request.post(
+                '/parabank/services/bank/transfer',
+                {
+                    headers: { Accept: 'application/json' },
+                    params: {
+                        fromAccountId: sourceAccountId,
+                        toAccountId: destination.id,
+                        amount: 'abc'
+                    }
+                }
+            );
+
+            const sourceAfter = await getStoredAccount(
+                api, customerId, sourceAccountId, 'CHECKING'
+            );
+            const destinationAfter = await getStoredAccount(
+                api, customerId, destination.id, 'SAVINGS'
+            );
+
+            // Primary business checks: no money moved.
+            expect(toCents(sourceAfter.balance))
+                .toBe(toCents(sourceBefore.balance));
+
+            expect(toCents(destinationAfter.balance))
+                .toBe(toCents(destinationBefore.balance));
+
+            // Observed ParaBank behaviour: HTTP 404 with an empty response body.
+            expect(response.status()).toBe(404);
+            expect(await response.text()).toBe('');
         });
 });
