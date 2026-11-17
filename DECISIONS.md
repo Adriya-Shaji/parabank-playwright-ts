@@ -604,3 +604,149 @@ The suite cannot automatically restore a known database state between runs, so t
 **Possible interviewer challenge:** Is `Math.round(amount * 100)` suitable for all financial calculations?
 
 **My defence:** No. It is suitable for the tested balances, but production financial calculations need stricter money handling.
+
+
+## Parallel Execution Investigation — 17 November 2026
+
+### Why I investigated this
+
+My Playwright framework uses **UUID-based usernames** and **test-scoped fixtures** to create separate test customers.
+
+I wanted to check whether the tests could run reliably with multiple Playwright workers against the same ParaBank Docker container.
+
+### Test results
+
+I ran two experiments using **4 workers** and `--repeat-each=5`.
+
+| Test run | Total | Passed | Failed |
+|---|---:|---:|---:|
+| Full suite | 75 | 71 | 4 |
+| Targeted rerun | 30 | 27 | 3 |
+
+In the full suite, three failures happened during customer registration and one during API account creation.
+
+In the targeted rerun, all three failures happened during registration.
+
+### Issue 1: Customer registration
+
+ParaBank rejected newly generated usernames with this message:
+
+`This username already exists.`
+
+I investigated the three failures using **Playwright Trace Viewer**.
+
+I found that:
+
+- Each test used a different UUID-generated username.
+- Each failing trace contained only one `POST /parabank/register.htm` request.
+- The server returned HTTP `200`, but the HTML response contained the duplicate-username error.
+- The tests failed because the registration-success message never appeared.
+
+I then checked the **Docker container logs**. `RegisterCustomerController` recorded the same error for all three usernames.
+
+| Username | Log time (UTC) |
+|---|---|
+| `cust_0789a279c079` | 19:05:24.581 |
+| `cust_812ce1ddcc88` | 19:05:24.587 |
+| `cust_ff03a9e5ea2f` | 19:05:31.957 |
+
+Two rejections occurred about **6 milliseconds apart**, on separate server request threads.
+
+I also tried logging in with four rejected usernames: three from the targeted run and one from the full-suite run. All four failed authentication using the expected password.
+
+The Docker container had not restarted during these tests.
+
+**What I confirmed:** ParaBank rejected different generated usernames during concurrent execution, even though each failing browser trace showed only one registration request.
+
+**What is still unknown:** Why ParaBank returned the duplicate-username error. Failed logins do not independently prove that the customer records were absent from the database.
+
+### Issue 2: API account creation
+
+One test failed while creating a new bank account through the API.
+
+The API returned **HTTP 400**.
+
+I checked the ParaBank server logs and found:
+
+- `DuplicateKeyException`
+- `SQLIntegrityConstraintViolationException`
+- A primary-key constraint violation on the `ACCOUNT` table
+- The failing SQL operation: `INSERT INTO Account (id, customer_id, type, balance) VALUES (?, ?, ?, ?)`
+
+The logs also referenced customer `28085` and source account `37986`, matching the failed test.
+
+**What I confirmed:** Account creation failed because the database rejected an `ACCOUNT` insert that violated a primary-key constraint.
+
+**What is still unknown:** Why a conflicting account ID was used.
+
+### Related investigation
+
+I found an external GitHub report describing similar ParaBank issues:
+
+[DEF-003 — Concurrent writes fail intermittently](https://github.com/gavenjohn/parabank-playwright-ts/blob/main/docs/defects/DEF-003-concurrent-registration-false-duplicate.md)
+
+According to the report, its author inspected ParaBank's bytecode and found two possible explanations:
+
+- **Account ID generation:** `JdbcSequenceDao.getNextId` uses separate read and update operations without sufficient locking. Concurrent requests may therefore use the same account ID.
+- **Registration error handling:** `RegisterCustomerController.onSubmit` catches `DataIntegrityViolationException` and displays `error.username.already.exists`, even when the database error may not be caused by a duplicate username.
+
+This could explain why ParaBank rejects unique usernames with a misleading error message.
+
+My `DuplicateKeyException` on the `ACCOUNT` primary key is also consistent with the reported account-ID generation problem.
+
+However, I have **not independently checked the bytecode** or confirmed that my Docker image uses exactly the same implementation. I am treating these findings as external evidence, not a proven root cause for my environment.
+
+### My decision
+
+I will keep:
+
+```typescript
+workers: 1,
+fullyParallel: false,
+```
+
+This allows the tests to run sequentially against the shared ParaBank instance.
+
+I have not added retries to work around the parallel failures.
+
+My existing Playwright configuration uses:
+
+```typescript
+retries: process.env.CI ? 2 : 0,
+```
+
+CI also uses one worker, so these existing retries do not hide the parallel-execution failures observed during the experiments.
+
+I will not add arbitrary waits or extra retries just to make the parallel tests pass.
+
+### Trade-off
+
+**Benefit:** Single-worker execution avoids the concurrent-execution failures observed during testing and provides more reliable regression results in this environment.
+
+**Drawback:** Tests take longer because they run sequentially.
+
+### Alternative considered
+
+I considered running **one isolated ParaBank Docker container and database per worker**.
+
+This could prevent workers from interfering with each other through shared backend state.
+
+I decided not to implement it because the current test suite is small, and the additional Docker setup and maintenance would add unnecessary complexity.
+
+### Future improvement
+
+If I need parallel execution later, I will:
+
+1. Verify the reported `JdbcSequenceDao` and `RegisterCustomerController` implementations against my ParaBank image.
+2. Investigate isolated ParaBank containers and databases for parallel workers.
+3. Run the concurrency tests again to check whether registration and account creation are reliable.
+
+### Final outcome
+
+I reproduced the failures, examined the Playwright traces, checked the HTTP requests and responses, and matched the failures with Docker server logs.
+
+I confirmed a database primary-key violation during account creation and server-side username rejections during registration.
+
+I could not independently confirm the exact backend mechanisms behind these failures.
+
+**Final decision: Keep `workers: 1` for reliable test execution against the shared ParaBank environment.**
