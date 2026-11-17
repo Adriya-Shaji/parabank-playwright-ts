@@ -787,3 +787,14 @@ I could not independently confirm the exact backend mechanisms behind these fail
 - **Non-numeric amount:** `amount=abc` returns HTTP 404 with an empty response body. Neither account balance changes. The status code is misleading for invalid input, but the cause is not confirmed.
 - **Invalid destination account:** Returns HTTP 400 with the message `Could not find account number {source} and/or {destination}`. The message does not identify which account is invalid.
 - **Successful transfer:** Returns `Content-Type: application/json`, but the response body is plain text. Calling `response.json()` would fail.
+
+
+## Tags: only where they cut across folders
+
+**Decision:** Two tags. `@smoke` covers the UI home page and the API login. `@e2e` covers the end-to-end journey.
+
+**Why `@smoke` includes an API test:** In CI Run #2 the home-page smoke test passed while ParaBank's database was not ready and 7 tests failed. The API login reads seeded data, so it confirms the database is up.
+
+**Not added:** `@api` duplicates the `tests/api` folder, which can already be selected by path. `@regression` on every test would carry no information; the full run is the regression run.
+
+**CI:** Runs the full suite in one step. The suite takes about 9 seconds, so separate smoke and regression stages would add complexity without saving time. Revisit if the suite grows to several minutes.
