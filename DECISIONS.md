@@ -750,3 +750,40 @@ I confirmed a database primary-key violation during account creation and server-
 I could not independently confirm the exact backend mechanisms behind these failures.
 
 **Final decision: Keep `workers: 1` for reliable test execution against the shared ParaBank environment.**
+
+
+## Negative API tests pin observed error behaviour
+
+**Decision:** Negative API tests assert the exact status, content type and error text that ParaBank returns today.
+
+**Observed:** Invalid credentials and unknown customer ids return HTTP 400 with a `text/plain` body. Swagger documents a `default` response with `application/json` and does not specify error statuses or formats.
+
+**Why exact values:** A range check such as "any 4xx" would hide a regression to 5xx. An exact text match verifies that the response body contains only the expected error message, rather than customer data.
+
+**Design concerns noted, not raised as defects:**
+- 401 would be more conventional for failed authentication, although this endpoint does not use HTTP authentication.
+- Credentials are passed in the URL path, which exposes them to access and proxy logs. A production banking API should not do this.
+- Swagger lists `application/json` for its default response, but the observed error responses use `text/plain`. The documentation does not clearly define error response formats.
+- A successful login returns the customer's full SSN. A production banking API should mask or omit it, because returning it on every login widens exposure for no business need.
+
+**Trade-off:** If ParaBank changes its error format, these tests fail. That is intended, because a contract change should be reviewed rather than silently accepted.
+
+## Known defect: Negative transfer amount
+
+**Observed:** ParaBank accepts `amount=-10` and returns HTTP 200. Instead of rejecting the request, it adds $10 to the source account and removes $10 from the destination account.
+
+**Decision:** The test checks the expected behaviour: the request should fail and both balances should remain unchanged.
+
+- `test.fail()` marks this as a known defect.
+- `test.fail()` is placed after test setup so setup failures are reported normally.
+- `expect.soft()` checks both balances and the API response without stopping at the first failure.
+
+**When fixed:** Playwright will report an unexpected pass and fail the test run. Remove `test.fail()` and update the assertions if needed.
+
+**Limitation:** Other failures after `test.fail()` may also be treated as expected. Check the test report to confirm the actual failure.
+
+## Other observed transfer behaviour
+
+- **Non-numeric amount:** `amount=abc` returns HTTP 404 with an empty response body. Neither account balance changes. The status code is misleading for invalid input, but the cause is not confirmed.
+- **Invalid destination account:** Returns HTTP 400 with the message `Could not find account number {source} and/or {destination}`. The message does not identify which account is invalid.
+- **Successful transfer:** Returns `Content-Type: application/json`, but the response body is plain text. Calling `response.json()` would fail.

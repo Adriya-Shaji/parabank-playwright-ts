@@ -86,7 +86,7 @@ docker compose down
 
 ## What is tested
 
-The suite contains **15 tests in 9 spec files**, running on Chromium.
+The suite contains **21 tests in 10 spec files**, running on Chromium. One test is an expected failure that documents a known ParaBank defect.
 
 - **Smoke:** ParaBank home page loads.
 - **Registration:** Successful registration, login after registration and duplicate username rejection.
@@ -94,6 +94,7 @@ The suite contains **15 tests in 9 spec files**, running on Chromium.
 - **Accounts:** SAVINGS account creation through the UI, including source and destination balance checks.
 - **UI transfer:** $10 transfer with confirmation of amount and account numbers.
 - **API:** Customer login, customer details, account validation and a $10 transfer with balance checks.
+- **API negative paths:** Tests invalid login credentials, unknown customer IDs, transfers to non-existent accounts and non-numeric transfer amounts. Also checks that login errors return the same status, content type and message for unknown usernames and incorrect passwords. Negative transfer amounts are covered by an expected-failure test because of a known ParaBank defect.
 - **API-assisted UI transfer:** Creates and confirms a SAVINGS account through the API, transfers $10 through the UI, verifies both balances through the API and the destination balance through Accounts Overview.
 - **End-to-end journey:** Registers a customer, opens a SAVINGS account, transfers $10 and verifies the debit and credit transactions through the UI.
 
@@ -101,7 +102,7 @@ The suite contains **15 tests in 9 spec files**, running on Chromium.
 
 - Cross-browser execution beyond Chromium.
 - Accessibility and performance testing.
-- Full API error and negative-path behaviour.
+- Negative API scenarios for endpoints other than login, customer lookup and transfers.
 - Parallel execution reliability.
 - All ParaBank account types and banking features.
 
