@@ -68,8 +68,12 @@ npx playwright install chromium
 
 ### 4. Run the tests
 
+To run a subset:
+
 ```bash
-npx playwright test
+npm run test:smoke   # environment check: UI home page and a database-backed API login
+npm run test:fast    # everything except the end-to-end journey
+npm test             # full suite (regression)
 ```
 
 To open the HTML report:
